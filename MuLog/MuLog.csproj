@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<PackageId>MuLog</PackageId>
+    <Version>1.0.0</Version> <!-- Sarà sovrascritto dallo script -->
+    <Authors>Luca Farias</Authors>
+    <Description>Dynamic zone logging library based on Serilog</Description>
+    <PackageTags>logging;serilog;dynamic;zone</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    
+     <!-- <CustomPackageOutputPath>$(MSBuildProjectDirectory)\..\NuGetPackages</CustomPackageOutputPath> -->
+    
+    <!-- SENZA DEFAULT, LO SCRIPT DEVE SEMPRE SPECIFICARE -OutputDir -->
+    <PackageOutputPath></PackageOutputPath>
+    
+    <!-- AGGIUNGI IL NOME PACCHETTO E VERSIONE ALLA PATH -->
+    <FullPackageOutputPath>$(PackageOutputPath)\$(PackageId)\$(Version)\</FullPackageOutputPath>
+    
+    <!-- GENERA SOLO IN RELEASE -->
+    <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild Condition="'$(Configuration)'!='Release'">false</GeneratePackageOnBuild>
+    
+    <!-- USA LA PATH COMPLETA -->
+    <PackageOutputPath>$(FullPackageOutputPath)</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Serilog.Sinks.Map" Version="2.0.0" />
+  </ItemGroup>
+
+</Project>
+
+

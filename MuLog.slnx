@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MuLog/MuLog.csproj" />
+  <Project Path="TestMuLog/TestMuLog.csproj" Id="bc4407e0-d672-4061-a7f2-b7de822b0d99" />
+</Solution>
