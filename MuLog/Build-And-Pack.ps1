@@ -9,7 +9,7 @@ Write-Host "=== MU-LOG PACKAGE BUILDER ===" -ForegroundColor Cyan
 # 1. DETERMINA DIRECTORY OUTPUT
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     # Usa default dal csproj
-    $OutputDir = "$PSScriptRoot\..\NuGetPackages"
+    $OutputDir = "$PSScriptRoot\..\..\Packages"
     Write-Host "Usando directory di default: $OutputDir" -ForegroundColor Yellow
 } else {
     # Usa directory specificata
