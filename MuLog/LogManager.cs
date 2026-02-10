@@ -58,9 +58,15 @@ namespace MuLog
                                 retainedFileCountLimit: options.ZonedLogRetentionDays);
                     }
                 })
-                .WriteTo.File(options.GeneralLogFileTemplate,
-                              rollingInterval: RollingInterval.Day,
-                              retainedFileCountLimit: options.GeneralLogRetentionDays)
+                // AGGIUNGI IL FILTRO QUI: Scrivi nel generale solo se NON è un log di zona
+                .WriteTo.Logger(generalLc => generalLc
+                    .Filter.ByExcluding(le =>
+                        le.Properties.TryGetValue("SourceContext", out var ctx) &&
+                        ctx.ToString().Contains(_options.ZonePrefix))
+                    .WriteTo.File(options.GeneralLogFileTemplate,
+                                  rollingInterval: RollingInterval.Day,
+                                  retainedFileCountLimit: options.GeneralLogRetentionDays)
+                )
             );
 
             return loggerConfiguration.CreateLogger();
