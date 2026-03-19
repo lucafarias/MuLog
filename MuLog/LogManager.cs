@@ -1,8 +1,8 @@
-﻿
-using Serilog;
+﻿using Serilog;
 using Serilog.Events;
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 
 namespace MuLog
 {
@@ -32,10 +32,84 @@ namespace MuLog
                 _zonePrefix = options.ZonePrefix ?? _zonePrefix;
                 IsInitialized = true;
 
-                _internalLogger.Information("LogManager inizializzato con livello minimo: {Level}",
-                    options.DefaultMinimumLevel);
+                CleanupAllLogs();
+
+                _internalLogger.Information(
+                    "LogManager inizializzato con livello minimo: {Level}",
+                    options.DefaultMinimumLevel
+                );
             }
         }
+
+        // --------------------------------------------------------------------
+        // LOG CLEANUP
+        // --------------------------------------------------------------------
+
+        /// <summary>
+        /// Cancella i file più vecchi di retentionDays nella directory indicata.
+        /// </summary>
+        private void CleanupOldLogs(string directory, string prefix, int retentionDays)
+        {
+            try
+            {
+                if (!Directory.Exists(directory))
+                    return;
+
+                DateTime limit = DateTime.Now.AddDays(-retentionDays);
+
+                string searchPattern = $"{prefix}*.log";
+                var files = Directory.GetFiles(directory, searchPattern);
+
+                foreach (var file in files)
+                {
+                    var info = new FileInfo(file);
+
+                    if (info.LastWriteTime < limit)
+                    {
+                        try
+                        {
+                            info.Delete();
+                            _internalLogger?.Information("Cancellato log obsoleto: {File}", file);
+                        }
+                        catch (Exception ex)
+                        {
+                            _internalLogger?.Warning(
+                                ex,
+                                "Impossibile cancellare il file di log {File}",
+                                file
+                            );
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _internalLogger?.Warning(ex, "Errore nella pulizia dei file di log");
+            }
+        }
+
+        /// <summary>
+        /// Esegue la cleanup per log generali e log di zona.
+        /// </summary>
+        private void CleanupAllLogs()
+        {
+            string directory = Path.GetDirectoryName(_options.GeneralLogFileTemplate);
+            if (string.IsNullOrWhiteSpace(directory))
+                directory = "logs";
+
+            // Pulizia GLOBAL
+            CleanupOldLogs(directory, "general-", _options.GeneralLogRetentionDays);
+
+            // Pulizia per ogni zona già conosciuta
+            foreach (var zone in EnabledZones.Keys)
+            {
+                CleanupOldLogs(directory, $"{zone}-", _options.ZonedLogRetentionDays);
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // LOGGER CREATION
+        // --------------------------------------------------------------------
 
         private ILogger CreateLogger(LoggingOptions options)
         {
@@ -58,7 +132,6 @@ namespace MuLog
                                 retainedFileCountLimit: options.ZonedLogRetentionDays);
                     }
                 })
-                // AGGIUNGI IL FILTRO QUI: Scrivi nel generale solo se NON è un log di zona
                 .WriteTo.Logger(generalLc => generalLc
                     .Filter.ByExcluding(le =>
                         le.Properties.TryGetValue("SourceContext", out var ctx) &&
@@ -87,11 +160,20 @@ namespace MuLog
             return true;
         }
 
+        // --------------------------------------------------------------------
+        // PUBLIC API
+        // --------------------------------------------------------------------
+
         public void EnableZone(string zoneName)
         {
             EnsureInitialized();
             if (string.IsNullOrWhiteSpace(zoneName)) return;
             EnabledZones[zoneName] = true;
+
+            // cleanup anche per la nuova zona attiva
+            string directory = "logs";
+            CleanupOldLogs(directory, $"{zoneName}-", _options.ZonedLogRetentionDays);
+
             _internalLogger?.Information("Zona di logging '{ZoneName}' attivata.", zoneName);
         }
 
@@ -112,27 +194,21 @@ namespace MuLog
         public void Write(LogEventLevel level, string message, string zone = null)
         {
             EnsureInitialized();
+
             if (string.IsNullOrEmpty(zone))
-            {
                 _internalLogger.Write(level, message);
-            }
             else
-            {
                 GetZoneLogger(zone).Write(level, message);
-            }
         }
 
         public void WriteError(Exception exception, string message, string zone = null)
         {
             EnsureInitialized();
+
             if (string.IsNullOrEmpty(zone))
-            {
                 _internalLogger.Error(exception, message);
-            }
             else
-            {
                 GetZoneLogger(zone).Error(exception, message);
-            }
         }
 
         private void EnsureInitialized()
